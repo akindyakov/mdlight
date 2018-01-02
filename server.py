@@ -57,11 +57,11 @@ def parse_args():
 
 
 class PageNode(object):
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self, filepath):
+        self.filepath = filepath
 
     def page(self):
-        with open(self.filename) as fin:
+        with open(self.filepath) as fin:
             return fin.read()
 
 
@@ -90,11 +90,12 @@ class MapNode(object):
         self.path = path
         self.items = list()
 
-    def add(self, filename):
+    def add(self, filepath, relpath):
+        _log.debug("Add %s to %s", filepath, relpath)
         self.items.append(
             self.Item(
-                title=self._extract_title(filename),
-                path=filename,
+                title=self._extract_title(filepath),
+                path=relpath,
             )
         )
 
@@ -110,18 +111,28 @@ class MapNode(object):
         )
 
 
-def build_tree(path):
+def skip_prefix(string, prefix):
+    if string.startswith(prefix):
+        return string[len(prefix):]
+    return string
+
+
+def build_tree(root_path):
     tree = dict()
-    for (dirpath, dirnames, filenames) in os.walk(path, followlinks=True):
+    for (dirpath, dirnames, filenames) in os.walk(root_path, followlinks=True):
         map_node = MapNode(dirpath)
         for filename in filenames:
             if filename.endswith(".md") or filename.endswith(".markdown"):
                 filepath = os.path.join(dirpath, filename)
-                tree[filepath] = PageNode(filepath)
-                map_node.add(filepath)
+                relpath = skip_prefix(filepath, root_path)
+                tree[relpath] = PageNode(filepath)
+                map_node.add(filepath, relpath)
         for dirname in dirnames:
-            map_node.add(os.path.join(dirpath, dirname))
-        tree[dirpath] = map_node
+            path = os.path.join(dirpath, dirname)
+            relpath = skip_prefix(path, root_path)
+            map_node.add(path, relpath)
+        relpath = skip_prefix(dirpath, root_path)
+        tree[relpath] = map_node
     return tree
 
 
@@ -165,6 +176,7 @@ def run_server(tree, host, port):
         (host, port),
         Handler2,
     )
+    _log.debug("Run server on %s:%d", host, port)
     httpd.serve_forever()
 
 
@@ -180,7 +192,7 @@ if __name__ == "__main__":
         _log.setLevel(logging.DEBUG)
 
         ch = logging.StreamHandler()
-        ch.setLevel(logging.ERROR)
+        ch.setLevel(logging.DEBUG)
         ch.setFormatter(
             logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
         )
