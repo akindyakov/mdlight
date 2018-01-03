@@ -29,7 +29,8 @@ def parse_args():
     parser.add_argument(
         "--dir",
         metavar="PATH",
-        help="Directory with markdown pages.",
+        default=os.curdir,
+        help="Directory with markdown pages, default: %(default)s.",
     )
     parser.add_argument(
         "--hostname",
