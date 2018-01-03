@@ -187,7 +187,7 @@ class QueryHandler(http.server.BaseHTTPRequestHandler):
             self.path.strip("/")
         )
         if node is None:
-            self._error(HTTPStatus.NOT_FOUND)
+            self.send_response(HTTPStatus.NOT_FOUND)
             return
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-type", node.content_type())
