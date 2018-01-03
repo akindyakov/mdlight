@@ -86,7 +86,7 @@ class MdNode(INode):
         self.title_ = self._extract_title(filepath)
         self.encoding_ = "utf-8"
 
-    def page(self):
+    def content(self):
         proc = subprocess.Popen(
             ["pandoc", self.filepath, "--to", "html5"],
             shell=False,
@@ -117,7 +117,7 @@ class MapNode(INode):
             )
         )
 
-    def page(self):
+    def content(self):
         return "<ul>{}</ul>".format(
             "".join(
                 """<li><a href="/{path}">{title}</a></li>""".format(
@@ -135,7 +135,7 @@ class DataNode(INode):
         self.title_ = os.path.basename(path)
         (self.mime_type_, self.encoding_) = mimetypes.guess_type(path, strict=True)
 
-    def page(self):
+    def content(self):
         with open(self.path, "rb") as fin:
             return fin.read()
 
@@ -193,7 +193,7 @@ class QueryHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-encoding", node.content_encoding())
         self.end_headers()
         self.wfile.write(
-            node.page()
+            node.content()
         )
 
 
