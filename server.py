@@ -63,7 +63,7 @@ class INode(object):
 
 
 class MdNode(INode):
-    RE_TITLE = re.compile("\s*#([^#].*)")
+    RE_FIRST_HEADER = re.compile("\s*#([^#].*)")
     @staticmethod
     def _extract_title(pathname):
         title = os.path.basename(pathname)
@@ -72,7 +72,7 @@ class MdNode(INode):
                 for (num, line) in enumerate(fin):
                     if num > 10:
                         break
-                    m = MdNode.RE_TITLE.match(line)
+                    m = MdNode.RE_FIRST_HEADER.match(line)
                     if m:
                         title += ": " + m.groups()[0].strip()
                         break
