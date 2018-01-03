@@ -81,6 +81,7 @@ class MdNode(INode):
     ACCEPTED_EXTENSIONS = {".markdown", ".md", ".tex"}
 
     def __init__(self, filepath):
+        _log.debug("Markdown node %r", filepath)
         self.filepath = filepath
         self.title_ = self._extract_title(filepath)
         self.encoding_ = "utf-8"
@@ -103,6 +104,7 @@ class MapNode(INode):
             self.path = path
 
     def __init__(self, path):
+        _log.debug("Map node %r", path)
         self.path = path
         self.items = list()
 
@@ -202,7 +204,7 @@ def run_server(tree, host, port):
         server_address,
         QueryHandler,
     )
-    _log.debug("Run server on http://%s:%d", host, port)
+    _log.info("Run server on http://%s:%d", host, port)
     httpd.serve_forever()
 
 
