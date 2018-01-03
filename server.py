@@ -1,14 +1,22 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+This is a simplest markdown document viewer.
 
+It scan {--dir} directory for markdown documents and run http server on it.
+To see documents just open any web-browser and got to
+"http://{--host}:{--port}" website.
+"""
+
+from http import HTTPStatus
 import argparse
+import http.server
 import logging
+import mimetypes
 import os
-import sys
 import re
-
-import BaseHTTPServer
-
-import mako.template
+import subprocess
+import sys
 
 
 _log = logging.getLogger(__name__)
@@ -22,23 +30,6 @@ def parse_args():
         "--dir",
         metavar="PATH",
         help="Directory with markdown pages.",
-    )
-    parser.add_argument(
-        "--style",
-        metavar="CSS_FILE",
-        help="CSS style for all pages.",
-    )
-    parser.add_argument(
-        "--template",
-        metavar="MAKO_FILE",
-        help="Template for all pages with {{content}} block inside.",
-    )
-    parser.add_argument(
-        "--cache-size",
-        metavar="INT",
-        default=17,
-        type=int,
-        help="Cache size in pages, default %(default)s.",
     )
     parser.add_argument(
         "--hostname",
@@ -56,16 +47,22 @@ def parse_args():
     return parser.parse_args()
 
 
-class PageNode(object):
-    def __init__(self, filepath):
-        self.filepath = filepath
+class INode(object):
+    mime_type_ = "text/html"
+    encoding_ = None
+    title_ = None
 
-    def page(self):
-        with open(self.filepath) as fin:
-            return fin.read()
+    def content_type(self):
+        return self.mime_type_
+
+    def content_encoding(self):
+        return self.encoding_
+
+    def title(self):
+        return self.title_
 
 
-class MapNode(object):
+class MdNode(INode):
     RE_TITLE = re.compile("\s*#([^#].*)")
     @staticmethod
     def _extract_title(pathname):
@@ -75,12 +72,31 @@ class MapNode(object):
                 for (num, line) in enumerate(fin):
                     if num > 10:
                         break
-                    m = MapNode.RE_TITLE.match(line)
+                    m = MdNode.RE_TITLE.match(line)
                     if m:
                         title += ": " + m.groups()[0].strip()
                         break
         return title
 
+    ACCEPTED_EXTENSIONS = {".markdown", ".md", ".tex"}
+
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.title_ = self._extract_title(filepath)
+        self.encoding_ = "utf-8"
+
+    def page(self):
+        proc = subprocess.Popen(
+            ["pandoc", self.filepath, "--to", "html5"],
+            shell=False,
+            stdout=subprocess.PIPE,
+        )
+        text = proc.stdout.read()
+        proc.wait()
+        return text
+
+
+class MapNode(INode):
     class Item(object):
         def __init__(self, title, path):
             self.title = title
@@ -90,11 +106,11 @@ class MapNode(object):
         self.path = path
         self.items = list()
 
-    def add(self, filepath, relpath):
-        _log.debug("Add %s to %s", filepath, relpath)
+    def add(self, relpath, title):
+        _log.debug("Add %s as %s", relpath, title)
         self.items.append(
             self.Item(
-                title=self._extract_title(filepath),
+                title=title,
                 path=relpath,
             )
         )
@@ -102,13 +118,24 @@ class MapNode(object):
     def page(self):
         return "<ul>{}</ul>".format(
             "".join(
-                """<li><a href="{path}">{title}</a></li>""".format(
+                """<li><a href="/{path}">{title}</a></li>""".format(
                     path=item.path,
                     title=item.title,
                 )
                 for item in self.items
             )
-        )
+        ).encode("utf-8")
+
+
+class DataNode(INode):
+    def __init__(self, path):
+        self.path = path
+        self.title_ = os.path.basename(path)
+        (self.mime_type_, self.encoding_) = mimetypes.guess_type(path, strict=True)
+
+    def page(self):
+        with open(self.path, "rb") as fin:
+            return fin.read()
 
 
 def skip_prefix(string, prefix):
@@ -120,63 +147,62 @@ def skip_prefix(string, prefix):
 def build_tree(root_path):
     tree = dict()
     for (dirpath, dirnames, filenames) in os.walk(root_path, followlinks=True):
+        if os.path.basename(dirpath).startswith("."):
+            continue
         map_node = MapNode(dirpath)
         for filename in filenames:
-            if filename.endswith(".md") or filename.endswith(".markdown"):
-                filepath = os.path.join(dirpath, filename)
-                relpath = skip_prefix(filepath, root_path)
-                tree[relpath] = PageNode(filepath)
-                map_node.add(filepath, relpath)
+            if filename.startswith("."):
+                continue
+            filepath = os.path.join(dirpath, filename)
+            relpath = skip_prefix(filepath, root_path)
+            extension = os.path.splitext(relpath)[1]
+            if extension in MdNode.ACCEPTED_EXTENSIONS:
+                node = MdNode(filepath)
+            else:
+                node = DataNode(filepath)
+            tree[relpath] = node
+            map_node.add(relpath, node.title())
+
         for dirname in dirnames:
-            path = os.path.join(dirpath, dirname)
-            relpath = skip_prefix(path, root_path)
-            map_node.add(path, relpath)
+            if dirname.startswith("."):
+                continue
+            relpath = skip_prefix(
+                os.path.join(dirpath, dirname),
+                root_path,
+            )
+            map_node.add(relpath, os.path.basename(relpath))
         relpath = skip_prefix(dirpath, root_path)
         tree[relpath] = map_node
     return tree
 
 
-class Handler2(BaseHTTPServer.BaseHTTPRequestHandler):
+class QueryHandler(http.server.BaseHTTPRequestHandler):
     tree = None
-
-    def _success(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-    def _error(self, code=500):
-        self.send_response(code)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
 
     def do_GET(self):
         node = self.tree.get(
             self.path.strip("/")
         )
-        if node:
-            self._success()
-            self.wfile.write(
-                node.page()
-            )
-        else:
-            self._error(404)
-
-    def do_HEAD(self):
-        self._success()
-
-    def do_POST(self):
-        self._error()
-        self.wfile.write("Not implemented")
+        if node is None:
+            self._error(HTTPStatus.NOT_FOUND)
+            return
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-type", node.content_type())
+        self.send_header("Content-encoding", node.content_encoding())
+        self.end_headers()
+        self.wfile.write(
+            node.page()
+        )
 
 
 def run_server(tree, host, port):
-    server_address = ('', port)
-    Handler2.tree = tree
-    httpd = BaseHTTPServer.HTTPServer(
-        (host, port),
-        Handler2,
+    server_address = (host, port)
+    QueryHandler.tree = tree
+    httpd = http.server.HTTPServer(
+        server_address,
+        QueryHandler,
     )
-    _log.debug("Run server on %s:%d", host, port)
+    _log.debug("Run server on http://%s:%d", host, port)
     httpd.serve_forever()
 
 
@@ -188,7 +214,7 @@ def main():
 
 if __name__ == "__main__":
     try:
-        _log = logging.getLogger("main")
+        _log = logging.getLogger(__name__)
         _log.setLevel(logging.DEBUG)
 
         ch = logging.StreamHandler()
