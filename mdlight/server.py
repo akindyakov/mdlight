@@ -48,7 +48,7 @@ def parse_args():
     return parser.parse_args()
 
 
-class INode(object):
+class IPage(object):
     mime_type_ = "text/html"
     encoding_ = None
     title_ = None
@@ -63,7 +63,7 @@ class INode(object):
         return self.title_
 
 
-class MdNode(INode):
+class MarkdownPage(IPage):
     RE_FIRST_HEADER = re.compile("\s*#([^#].*)")
     @staticmethod
     def _extract_title(pathname):
@@ -73,7 +73,7 @@ class MdNode(INode):
                 for (num, line) in enumerate(fin):
                     if num > 10:
                         break
-                    m = MdNode.RE_FIRST_HEADER.match(line)
+                    m = MarkdownPage.RE_FIRST_HEADER.match(line)
                     if m:
                         title += ": " + m.groups()[0].strip()
                         break
@@ -98,7 +98,7 @@ class MdNode(INode):
         return text
 
 
-class MapNode(INode):
+class IndexPage(IPage):
     class Item(object):
         def __init__(self, title, path):
             self.title = title
@@ -130,7 +130,7 @@ class MapNode(INode):
         ).encode("utf-8")
 
 
-class DataNode(INode):
+class StaticPage(IPage):
     def __init__(self, path):
         self.path = path
         self.title_ = os.path.basename(path)
@@ -152,17 +152,17 @@ def build_tree(root_path):
     for (dirpath, dirnames, filenames) in os.walk(root_path, followlinks=True):
         if os.path.basename(dirpath).startswith("."):
             continue
-        map_node = MapNode(dirpath)
+        map_node = IndexPage(dirpath)
         for filename in filenames:
             if filename.startswith("."):
                 continue
             filepath = os.path.join(dirpath, filename)
             relpath = skip_prefix(filepath, root_path)
             extension = os.path.splitext(relpath)[1]
-            if extension in MdNode.ACCEPTED_EXTENSIONS:
-                node = MdNode(filepath)
+            if extension in MarkdownPage.ACCEPTED_EXTENSIONS:
+                node = MarkdownPage(filepath)
             else:
-                node = DataNode(filepath)
+                node = StaticPage(filepath)
             tree[relpath] = node
             map_node.add(relpath, node.title())
 
