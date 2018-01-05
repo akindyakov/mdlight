@@ -40,6 +40,9 @@ To test:
 Run `./mdlight/server.py --help` and let see what happen. This is a entry point.
 
 
+## How to test
+Run `python3 -m pytest` cmd to execute all tests.
+
 ## To do
 
 Some features I would like to make in future:
