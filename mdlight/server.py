@@ -12,11 +12,12 @@ from http import HTTPStatus
 import argparse
 import http.server
 import logging
-import mimetypes
 import os
 import re
-import subprocess
 import sys
+
+
+import tree as _tree
 
 
 _log = logging.getLogger(__name__)
@@ -48,146 +49,8 @@ def parse_args():
     return parser.parse_args()
 
 
-class IPage(object):
-    mime_type_ = "text/html"
-    encoding_ = None
-    title_ = None
-
-    def content_type(self):
-        return self.mime_type_
-
-    def content_encoding(self):
-        return self.encoding_
-
-    def title(self):
-        return self.title_
 
 
-class MarkdownPage(IPage):
-    RE_FIRST_HEADER = re.compile("\s*#([^#].*)")
-    @staticmethod
-    def _extract_title(pathname):
-        title = os.path.basename(pathname)
-        if not os.path.isdir(pathname):
-            with open(pathname) as fin:
-                for (num, line) in enumerate(fin):
-                    if num > 10:
-                        break
-                    m = MarkdownPage.RE_FIRST_HEADER.match(line)
-                    if m:
-                        title += ": " + m.groups()[0].strip()
-                        break
-        return title
-
-    ACCEPTED_EXTENSIONS = {".markdown", ".md", ".tex"}
-
-    def __init__(self, filepath):
-        _log.debug("Markdown node %r", filepath)
-        self.filepath = filepath
-        self.title_ = self._extract_title(filepath)
-        self.encoding_ = "utf-8"
-
-    def content(self):
-        proc = subprocess.Popen(
-            ["pandoc", self.filepath, "--to", "html5"],
-            shell=False,
-            stdout=subprocess.PIPE,
-        )
-        text = proc.stdout.read()
-        proc.wait()
-        return text
-
-
-class IndexPage(IPage):
-    class Item(object):
-        def __init__(self, title, path):
-            self.title = title
-            self.path = path
-
-    def __init__(self, path):
-        _log.debug("Index page %r", path)
-        self.path = path
-        self.items = list()
-
-    def add(self, relpath, title):
-        _log.debug("Add %s as %s", relpath, title)
-        self.items.append(
-            self.Item(
-                title=title,
-                path=relpath,
-            )
-        )
-
-    def content(self):
-        return "<ul>{}</ul>".format(
-            "".join(
-                """<li><a href="/{path}">{title}</a></li>""".format(
-                    path=item.path,
-                    title=item.title,
-                )
-                for item in self.items
-            )
-        ).encode("utf-8")
-
-
-class StaticPage(IPage):
-    def __init__(self, path):
-        _log.debug("Static page %r", path)
-        self.path = path
-        self.title_ = os.path.basename(path)
-        (self.mime_type_, self.encoding_) = mimetypes.guess_type(path, strict=True)
-
-    def content(self):
-        with open(self.path, "rb") as fin:
-            return fin.read()
-
-
-def skip_path_prefix(string, prefix):
-    if string.startswith(prefix):
-        string = string[len(prefix):]
-    if string.startswith("/"):
-        string = string[1:]
-    return string
-
-
-_RE_HIDDEN_PATH = re.compile("(./|^)\.[^\./]")
-
-
-def _is_hidden_path(path):
-    to_skip = _RE_HIDDEN_PATH.match(path) is not None
-    return to_skip
-
-
-def build_tree(root_path):
-    tree = dict()
-    for (dirpath, dirnames, filenames) in os.walk(root_path, followlinks=True):
-        if _is_hidden_path(dirpath):
-            continue
-        map_node = IndexPage(dirpath)
-        for filename in filenames:
-            if _is_hidden_path(filename):
-                continue
-            filepath = os.path.join(dirpath, filename)
-            relpath = skip_path_prefix(filepath, root_path)
-            extension = os.path.splitext(relpath)[1]
-            if extension in MarkdownPage.ACCEPTED_EXTENSIONS:
-                node = MarkdownPage(filepath)
-            else:
-                node = StaticPage(filepath)
-            tree[relpath] = node
-            map_node.add(relpath, node.title())
-
-        for dirname in dirnames:
-            if _is_hidden_path(dirname):
-                continue
-            relpath = skip_path_prefix(
-                os.path.join(dirpath, dirname),
-                root_path,
-            )
-            map_node.add(relpath, os.path.basename(relpath))
-        relpath = skip_path_prefix(dirpath, root_path)
-        tree[relpath] = map_node
-    return tree
 
 
 class QueryHandler(http.server.BaseHTTPRequestHandler):
@@ -222,7 +85,7 @@ def run_server(tree, host, port):
 
 def main():
     args = parse_args()
-    tree = build_tree(args.dir)
+    tree = _tree.build_tree(args.dir)
     run_server(tree, args.hostname, args.port)
 
 
