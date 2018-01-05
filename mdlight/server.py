@@ -105,7 +105,7 @@ class IndexPage(IPage):
             self.path = path
 
     def __init__(self, path):
-        _log.debug("Map node %r", path)
+        _log.debug("Index page %r", path)
         self.path = path
         self.items = list()
 
@@ -132,6 +132,7 @@ class IndexPage(IPage):
 
 class StaticPage(IPage):
     def __init__(self, path):
+        _log.debug("Static page %r", path)
         self.path = path
         self.title_ = os.path.basename(path)
         (self.mime_type_, self.encoding_) = mimetypes.guess_type(path, strict=True)
