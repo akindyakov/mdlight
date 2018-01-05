@@ -64,6 +64,30 @@ class MarkdownPage(IPage):
         return text
 
 
+class GraphvizPage(IPage):
+    ACCEPTED_EXTENSIONS = {
+        ".graphviz",
+        ".dot",
+    }
+
+    def __init__(self, filepath):
+        _log.debug("Graphviz node %r", filepath)
+        self.filepath = filepath
+        self.title_ = os.path.basename(filepath)
+        self.encoding_ = "utf-8"
+        self.mime_type_ = "image/svg+xml"
+
+    def content(self):
+        proc = subprocess.Popen(
+            ["dot", self.filepath, "-T", "svg"],
+            shell=False,
+            stdout=subprocess.PIPE,
+        )
+        text = proc.stdout.read()
+        proc.wait()
+        return text
+
+
 class IndexPage(IPage):
     class Item(object):
         def __init__(self, title, path):

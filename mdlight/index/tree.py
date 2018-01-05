@@ -58,6 +58,8 @@ def build_tree(root_path):
             extension = os.path.splitext(relpath)[1]
             if extension in pages.MarkdownPage.ACCEPTED_EXTENSIONS:
                 node = pages.MarkdownPage(filepath)
+            elif extension in pages.GraphvizPage.ACCEPTED_EXTENSIONS:
+                node = pages.GraphvizPage(filepath)
             else:
                 node = pages.StaticPage(filepath)
             tree[relpath] = node

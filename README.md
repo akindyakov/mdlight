@@ -29,6 +29,7 @@ To run:
 
   * python3
   * [pandoc](https://pandoc.org/)
+  * [graphviz](https://en.wikipedia.org/wiki/Graphviz)
 
 To test:
 
@@ -43,6 +44,5 @@ Run `./mdlight/server.py --help` and let see what happen. This is a entry point.
 
 Some features I would like to make in future:
 
-  * Support [graphviz](https://en.wikipedia.org/wiki/Graphviz)
   * Support HTML pattern page and CSS style
   * I case of perfomance problems it would be helpful to use another web server (e.g. [werkzeug](http://werkzeug.pocoo.org/)) and cache.
