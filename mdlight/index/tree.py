@@ -8,7 +8,7 @@ import logging
 import os
 import re
 
-import pages
+import index.pages as pages
 
 
 _log = logging.getLogger(__name__)
