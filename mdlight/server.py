@@ -49,10 +49,6 @@ def parse_args():
     return parser.parse_args()
 
 
-
-
-
-
 class QueryHandler(http.server.BaseHTTPRequestHandler):
     tree = None
 
