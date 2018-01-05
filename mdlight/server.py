@@ -142,23 +142,33 @@ class StaticPage(IPage):
             return fin.read()
 
 
-def skip_prefix(string, prefix):
+def skip_path_prefix(string, prefix):
     if string.startswith(prefix):
-        return string[len(prefix):]
+        string = string[len(prefix):]
+    if string.startswith("/"):
+        string = string[1:]
     return string
+
+
+_RE_HIDDEN_PATH = re.compile("(./|^)\.[^\./]")
+
+
+def _is_hidden_path(path):
+    to_skip = _RE_HIDDEN_PATH.match(path) is not None
+    return to_skip
 
 
 def build_tree(root_path):
     tree = dict()
     for (dirpath, dirnames, filenames) in os.walk(root_path, followlinks=True):
-        if os.path.basename(dirpath).startswith("."):
+        if _is_hidden_path(dirpath):
             continue
         map_node = IndexPage(dirpath)
         for filename in filenames:
-            if filename.startswith("."):
+            if _is_hidden_path(filename):
                 continue
             filepath = os.path.join(dirpath, filename)
-            relpath = skip_prefix(filepath, root_path)
+            relpath = skip_path_prefix(filepath, root_path)
             extension = os.path.splitext(relpath)[1]
             if extension in MarkdownPage.ACCEPTED_EXTENSIONS:
                 node = MarkdownPage(filepath)
@@ -168,14 +178,14 @@ def build_tree(root_path):
             map_node.add(relpath, node.title())
 
         for dirname in dirnames:
-            if dirname.startswith("."):
+            if _is_hidden_path(dirname):
                 continue
-            relpath = skip_prefix(
+            relpath = skip_path_prefix(
                 os.path.join(dirpath, dirname),
                 root_path,
             )
             map_node.add(relpath, os.path.basename(relpath))
-        relpath = skip_prefix(dirpath, root_path)
+        relpath = skip_path_prefix(dirpath, root_path)
         tree[relpath] = map_node
     return tree
 
