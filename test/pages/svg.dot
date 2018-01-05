@@ -1,0 +1,6 @@
+digraph GraphTitle {
+    a -> b -> c;
+    b -> r -> t;
+    r -> z;
+    a -> z;
+}
