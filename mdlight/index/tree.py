@@ -8,21 +8,35 @@ import logging
 import os
 import re
 
-import index.pages as pages
+from mdlight.index import pages
 
 
 _log = logging.getLogger(__name__)
 
 
-def _skip_path_prefix(string, prefix):
-    if string.startswith(prefix):
-        string = string[len(prefix):]
-    if string.startswith("/"):
-        string = string[1:]
-    return string
+class TreeError(RuntimeError):
+    pass
 
 
-_RE_HIDDEN_PATH = re.compile("(./|^)\.[^\./]")
+class WrongPath(TreeError):
+    pass
+
+
+def _skip_path_prefix(path, prefix):
+    if not path.startswith(prefix):
+        raise WrongPath(
+            "There is no such prefix {pref!r} in the path {path!r}".format(
+                pref=prefix,
+                path=path,
+            )
+        )
+    path = path[len(prefix):]
+    if path.startswith("/"):
+        path = path[1:]
+    return path
+
+
+_RE_HIDDEN_PATH = re.compile(".*(./|^)\.[^\./]")
 
 
 def _is_hidden_path(path):

@@ -17,7 +17,16 @@ import re
 import sys
 
 
-import index.tree
+sys.path.append(
+    os.path.dirname(
+            os.path.dirname(
+            os.path.abspath(__file__)
+        )
+    )
+)
+
+
+import mdlight.index.tree
 
 
 _log = logging.getLogger(__name__)
@@ -81,7 +90,7 @@ def run_server(tree, host, port):
 
 def main():
     args = parse_args()
-    tree = index.tree.build_tree(args.dir)
+    tree = mdlight.index.tree.build_tree(args.dir)
     run_server(tree, args.hostname, args.port)
 
 
