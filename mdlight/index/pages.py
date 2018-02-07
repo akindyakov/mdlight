@@ -15,7 +15,7 @@ _log = logging.getLogger(__name__)
 
 
 class IPage(object):
-    mime_type_ = "text/html"
+    mime_type_ = "text/html;charset=utf-8"
     encoding_ = None
     title_ = None
 
@@ -46,8 +46,10 @@ class MarkdownPage(IPage):
         return title
 
     ACCEPTED_EXTENSIONS = {".markdown", ".md", ".tex"}
+    BINARY_NAME = "pandoc"
 
     def __init__(self, filepath):
+        super(MarkdownPage, self).__init__()
         _log.debug("Markdown node %r", filepath)
         self.filepath = filepath
         self.title_ = self._extract_title(filepath)
@@ -55,7 +57,7 @@ class MarkdownPage(IPage):
 
     def content(self):
         proc = subprocess.Popen(
-            ["pandoc", self.filepath, "--to", "html5"],
+            [self.BINARY_NAME, self.filepath, "--to", "html5"],
             shell=False,
             stdout=subprocess.PIPE,
         )
@@ -69,8 +71,10 @@ class GraphvizPage(IPage):
         ".graphviz",
         ".dot",
     }
+    BINARY_NAME = "dot"
 
     def __init__(self, filepath):
+        super(GraphvizPage).__init__()
         _log.debug("Graphviz node %r", filepath)
         self.filepath = filepath
         self.title_ = os.path.basename(filepath)
@@ -79,7 +83,7 @@ class GraphvizPage(IPage):
 
     def content(self):
         proc = subprocess.Popen(
-            ["dot", self.filepath, "-T", "svg"],
+            [self.BINARY_NAME , self.filepath, "-T", "svg"],
             shell=False,
             stdout=subprocess.PIPE,
         )
@@ -95,6 +99,7 @@ class IndexPage(IPage):
             self.path = path
 
     def __init__(self, path):
+        super(IndexPage, self).__init__()
         _log.debug("Index page %r", path)
         self.path = path
         self.items = list()
@@ -122,6 +127,7 @@ class IndexPage(IPage):
 
 class StaticPage(IPage):
     def __init__(self, path):
+        super(StaticPage).__init__()
         _log.debug("Static page %r", path)
         self.path = path
         self.title_ = os.path.basename(path)

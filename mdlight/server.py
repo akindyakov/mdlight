@@ -4,6 +4,7 @@
 This is a simplest markdown document viewer.
 
 It scan {--dir} directory for markdown documents and run http server on it.
+If not $MDLIGHT_DIR specified - current directory chosed by default.
 To see documents just open any web-browser and got to
 "http://{--host}:{--port}" website.
 """
@@ -27,6 +28,21 @@ sys.path.append(
 
 
 import mdlight.index.tree
+from mdlight.index.pages import MarkdownPage, GraphvizPage
+
+
+_REQUIRED_BINARIES = [
+    MarkdownPage.BINARY_NAME,
+    GraphvizPage.BINARY_NAME,
+]
+
+
+def __check_binary(binary):
+    for path in os.environ["PATH"].split(os.pathsep):
+        full_path = os.path.join(path, binary)
+        if os.path.exists(full_path):
+            return True
+    return False
 
 
 _log = logging.getLogger(__name__)
@@ -39,7 +55,7 @@ def parse_args():
     parser.add_argument(
         "--dir",
         metavar="PATH",
-        default=os.curdir,
+        default=os.path.expanduser(os.environ.get("MDLIGHT_DIR", os.curdir)),
         help="Directory with markdown pages, default: %(default)s.",
     )
     parser.add_argument(
@@ -96,6 +112,13 @@ def main():
 
 if __name__ == "__main__":
     try:
+        for binary in _REQUIRED_BINARIES:
+            if not __check_binary(binary):
+                raise Exception(
+                    "%s is not installed, or not in a PATH env" %
+                    binary
+                )
+
         _log = logging.getLogger(__name__)
         _log.setLevel(logging.DEBUG)
 
