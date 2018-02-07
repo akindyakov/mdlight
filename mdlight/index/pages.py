@@ -49,7 +49,6 @@ class MarkdownPage(IPage):
     BINARY_NAME = "pandoc"
 
     def __init__(self, filepath):
-        super(MarkdownPage, self).__init__()
         _log.debug("Markdown node %r", filepath)
         self.filepath = filepath
         self.title_ = self._extract_title(filepath)
@@ -74,7 +73,6 @@ class GraphvizPage(IPage):
     BINARY_NAME = "dot"
 
     def __init__(self, filepath):
-        super(GraphvizPage).__init__()
         _log.debug("Graphviz node %r", filepath)
         self.filepath = filepath
         self.title_ = os.path.basename(filepath)
@@ -99,7 +97,6 @@ class IndexPage(IPage):
             self.path = path
 
     def __init__(self, path):
-        super(IndexPage, self).__init__()
         _log.debug("Index page %r", path)
         self.path = path
         self.items = list()
@@ -127,7 +124,6 @@ class IndexPage(IPage):
 
 class StaticPage(IPage):
     def __init__(self, path):
-        super(StaticPage).__init__()
         _log.debug("Static page %r", path)
         self.path = path
         self.title_ = os.path.basename(path)
