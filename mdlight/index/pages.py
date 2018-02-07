@@ -16,7 +16,7 @@ _log = logging.getLogger(__name__)
 
 class IPage(object):
     mime_type_ = "text/html;charset=utf-8"
-    encoding_ = "identity"
+    encoding_ = None
     title_ = None
 
     def content_type(self):
@@ -52,6 +52,7 @@ class MarkdownPage(IPage):
         _log.debug("Markdown node %r", filepath)
         self.filepath = filepath
         self.title_ = self._extract_title(filepath)
+        self.encoding_ = "identity"
 
     def content(self):
         proc = subprocess.Popen(
