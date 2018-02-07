@@ -15,8 +15,8 @@ _log = logging.getLogger(__name__)
 
 
 class IPage(object):
-    mime_type_ = "text/html"
-    encoding_ = None
+    mime_type_ = "text/html;charset=utf-8"
+    encoding_ = "identity"
     title_ = None
 
     def content_type(self):
@@ -46,16 +46,16 @@ class MarkdownPage(IPage):
         return title
 
     ACCEPTED_EXTENSIONS = {".markdown", ".md", ".tex"}
+    BINARY_NAME = "pandoc"
 
     def __init__(self, filepath):
         _log.debug("Markdown node %r", filepath)
         self.filepath = filepath
         self.title_ = self._extract_title(filepath)
-        self.encoding_ = "utf-8"
 
     def content(self):
         proc = subprocess.Popen(
-            ["pandoc", self.filepath, "--to", "html5"],
+            [self.BINARY_NAME, self.filepath, "--to", "html5"],
             shell=False,
             stdout=subprocess.PIPE,
         )
@@ -69,17 +69,17 @@ class GraphvizPage(IPage):
         ".graphviz",
         ".dot",
     }
+    BINARY_NAME = "dot"
 
     def __init__(self, filepath):
         _log.debug("Graphviz node %r", filepath)
         self.filepath = filepath
         self.title_ = os.path.basename(filepath)
-        self.encoding_ = "utf-8"
         self.mime_type_ = "image/svg+xml"
 
     def content(self):
         proc = subprocess.Popen(
-            ["dot", self.filepath, "-T", "svg"],
+            [self.BINARY_NAME , self.filepath, "-T", "svg"],
             shell=False,
             stdout=subprocess.PIPE,
         )
