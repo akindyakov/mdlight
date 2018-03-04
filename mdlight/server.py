@@ -4,18 +4,18 @@
 This is a simplest markdown document viewer.
 
 It scan {--dir} directory for markdown documents and run http server on it.
-If not $MDLIGHT_DIR specified - current directory chosed by default.
 To see documents just open any web-browser and got to
 "http://{--host}:{--port}" website.
 """
 
-from http import HTTPStatus
 import argparse
 import http.server
 import logging
 import os
 import re
 import sys
+from http import HTTPStatus
+from shutil import which
 
 
 sys.path.append(
@@ -37,12 +37,10 @@ _REQUIRED_BINARIES = [
 ]
 
 
-def __check_binary(binary):
-    for path in os.environ["PATH"].split(os.pathsep):
-        full_path = os.path.join(path, binary)
-        if os.path.exists(full_path):
-            return True
-    return False
+def _check_binaries(binaries_name):
+    for binary_name in binaries_name:
+        if not which(binary_name):
+            raise FileNotFoundError("Can not find %s" % binary_name)
 
 
 _log = logging.getLogger(__name__)
@@ -55,7 +53,7 @@ def parse_args():
     parser.add_argument(
         "--dir",
         metavar="PATH",
-        default=os.path.expanduser(os.environ.get("MDLIGHT_DIR", os.curdir)),
+        default=os.curdir,
         help="Directory with markdown pages, default: %(default)s.",
     )
     parser.add_argument(
@@ -112,12 +110,8 @@ def main():
 
 if __name__ == "__main__":
     try:
-        for binary in _REQUIRED_BINARIES:
-            if not __check_binary(binary):
-                raise Exception(
-                    "%s is not installed, or not in a PATH env" %
-                    binary
-                )
+
+        _check_binaries(_REQUIRED_BINARIES)
 
         _log = logging.getLogger(__name__)
         _log.setLevel(logging.DEBUG)
