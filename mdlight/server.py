@@ -8,13 +8,14 @@ To see documents just open any web-browser and got to
 "http://{--host}:{--port}" website.
 """
 
-from http import HTTPStatus
 import argparse
 import http.server
 import logging
 import os
 import re
 import sys
+from http import HTTPStatus
+from shutil import which
 
 
 sys.path.append(
@@ -27,6 +28,19 @@ sys.path.append(
 
 
 import mdlight.index.tree
+from mdlight.index.pages import MarkdownPage, GraphvizPage
+
+
+_REQUIRED_BINARIES = [
+    MarkdownPage.BINARY_NAME,
+    GraphvizPage.BINARY_NAME,
+]
+
+
+def _check_binaries(binaries_name):
+    for binary_name in binaries_name:
+        if not which(binary_name):
+            raise FileNotFoundError("Can not find %s" % binary_name)
 
 
 _log = logging.getLogger(__name__)
@@ -96,6 +110,9 @@ def main():
 
 if __name__ == "__main__":
     try:
+
+        _check_binaries(_REQUIRED_BINARIES)
+
         _log = logging.getLogger(__name__)
         _log.setLevel(logging.DEBUG)
 
