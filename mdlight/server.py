@@ -13,9 +13,9 @@ import http.server
 import logging
 import os
 import re
+import shutil
 import sys
 from http import HTTPStatus
-from shutil import which
 
 
 sys.path.append(
@@ -39,7 +39,7 @@ _REQUIRED_BINARIES = [
 
 def _check_binaries(binaries_name):
     for binary_name in binaries_name:
-        if not which(binary_name):
+        if not shutil.which(binary_name):
             raise FileNotFoundError("Can not find %s" % binary_name)
 
 
