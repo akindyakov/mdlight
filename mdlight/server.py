@@ -73,11 +73,12 @@ def parse_args():
 
 
 class QueryHandler(http.server.BaseHTTPRequestHandler):
-    tree = None
+    root_path = None
 
     def do_GET(self):
-        node = self.tree.get(
-            self.path.strip("/")
+        node = mdlight.index.tree.create_node(
+            self.root_path,
+            self.path.strip("/"),
         )
         if node is None:
             self.send_response(HTTPStatus.NOT_FOUND)
@@ -91,9 +92,9 @@ class QueryHandler(http.server.BaseHTTPRequestHandler):
         )
 
 
-def run_server(tree, host, port):
+def run_server(root_path, host, port):
     server_address = (host, port)
-    QueryHandler.tree = tree
+    QueryHandler.root_path = root_path
     httpd = http.server.HTTPServer(
         server_address,
         QueryHandler,
@@ -104,8 +105,8 @@ def run_server(tree, host, port):
 
 def main():
     args = parse_args()
-    tree = mdlight.index.tree.build_tree(args.dir)
-    run_server(tree, args.hostname, args.port)
+    root_path = os.path.realpath(args.dir)
+    run_server(root_path, args.hostname, args.port)
 
 
 if __name__ == "__main__":

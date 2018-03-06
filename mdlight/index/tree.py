@@ -44,35 +44,40 @@ def _is_hidden_path(path):
     return to_skip
 
 
-def build_tree(root_path):
-    tree = dict()
-    for (dirpath, dirnames, filenames) in os.walk(root_path, followlinks=True):
-        if _is_hidden_path(dirpath):
-            continue
-        map_node = pages.IndexPage(dirpath)
-        for filename in filenames:
-            if _is_hidden_path(filename):
-                continue
-            filepath = os.path.join(dirpath, filename)
-            relpath = _skip_path_prefix(filepath, root_path)
-            extension = os.path.splitext(relpath)[1]
-            if extension in pages.MarkdownPage.ACCEPTED_EXTENSIONS:
-                node = pages.MarkdownPage(filepath)
-            elif extension in pages.GraphvizPage.ACCEPTED_EXTENSIONS:
-                node = pages.GraphvizPage(filepath)
-            else:
-                node = pages.StaticPage(filepath)
-            tree[relpath] = node
-            map_node.add(relpath, node.title())
+def _create_one_page(abs_path, relative_path):
+    if os.path.isdir(abs_path):
+        page = pages.IndexPage(abs_path)
+        for file_base_name in os.listdir(abs_path):
+            abs_file_path = os.path.join(abs_path, file_base_name)
+            relative_file_path = os.path.join(relative_path, file_base_name)
+            if not _is_hidden_path(abs_file_path):
+                page.add(
+                    relative_file_path,
+                    _create_one_page(
+                        abs_file_path,
+                        relative_file_path,
+                    ).title(),
+                )
+    else:
+        extension = os.path.splitext(abs_path)[1]
+        if extension in pages.MarkdownPage.ACCEPTED_EXTENSIONS:
+            page = pages.MarkdownPage(abs_path)
+        elif extension in pages.GraphvizPage.ACCEPTED_EXTENSIONS:
+            page = pages.GraphvizPage(abs_path)
+        else:
+            page = pages.StaticPage(abs_path)
+    return page
 
-        for dirname in dirnames:
-            if _is_hidden_path(dirname):
-                continue
-            relpath = _skip_path_prefix(
-                os.path.join(dirpath, dirname),
-                root_path,
+
+def create_node(root_path, relative_path):
+    abs_path = os.path.realpath(
+        os.path.join(root_path, relative_path)
+    )
+    relative_path = _skip_path_prefix(abs_path, root_path)
+    if _is_hidden_path(abs_path):
+        raise WrongPath(
+            "The path {path!r} is hidden".format(
+                path=abs_path,
             )
-            map_node.add(relpath, os.path.basename(relpath))
-        relpath = _skip_path_prefix(dirpath, root_path)
-        tree[relpath] = map_node
-    return tree
+        )
+    return _create_one_page(abs_path, relative_path)

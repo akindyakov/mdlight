@@ -99,6 +99,7 @@ class IndexPage(IPage):
         _log.debug("Index page %r", path)
         self.path = path
         self.items = list()
+        self.title_ = os.path.basename(path)
 
     def add(self, relpath, title):
         _log.debug("Add %s as %s", relpath, title)
@@ -131,4 +132,3 @@ class StaticPage(IPage):
     def content(self):
         with open(self.path, "rb") as fin:
             return fin.read()
-
