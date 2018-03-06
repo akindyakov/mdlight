@@ -44,7 +44,7 @@ def _is_hidden_path(path):
     return to_skip
 
 
-def _create_one_page(abs_path, relative_path):
+def _create_node_rec(abs_path, relative_path):
     if os.path.isdir(abs_path):
         page = pages.IndexPage(abs_path)
         for file_base_name in os.listdir(abs_path):
@@ -53,7 +53,7 @@ def _create_one_page(abs_path, relative_path):
             if not _is_hidden_path(abs_file_path):
                 page.add(
                     relative_file_path,
-                    _create_one_page(
+                    _create_node_rec(
                         abs_file_path,
                         relative_file_path,
                     ).title(),
@@ -73,6 +73,12 @@ def create_node(root_path, relative_path):
     abs_path = os.path.realpath(
         os.path.join(root_path, relative_path)
     )
+    if not os.path.exists(abs_path):
+        raise WrongPath(
+            "There is no such file {path!r}".format(
+                path=relative_path,
+            )
+        )
     relative_path = _skip_path_prefix(abs_path, root_path)
     if _is_hidden_path(abs_path):
         raise WrongPath(
@@ -80,4 +86,4 @@ def create_node(root_path, relative_path):
                 path=abs_path,
             )
         )
-    return _create_one_page(abs_path, relative_path)
+    return _create_node_rec(abs_path, relative_path)

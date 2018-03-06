@@ -76,20 +76,21 @@ class QueryHandler(http.server.BaseHTTPRequestHandler):
     root_path = None
 
     def do_GET(self):
-        node = mdlight.index.tree.create_node(
-            self.root_path,
-            self.path.strip("/"),
-        )
-        if node is None:
+        try:
+            node = mdlight.index.tree.create_node(
+                root_path=self.root_path,
+                relative_path=self.path.strip("/"),
+            )
+        except mdlight.index.tree.WrongPath:
             self.send_response(HTTPStatus.NOT_FOUND)
-            return
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-type", node.content_type())
-        self.send_header("Content-encoding", node.content_encoding())
-        self.end_headers()
-        self.wfile.write(
-            node.content()
-        )
+        else:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-type", node.content_type())
+            self.send_header("Content-encoding", node.content_encoding())
+            self.end_headers()
+            self.wfile.write(
+                node.content()
+            )
 
 
 def run_server(root_path, host, port):
