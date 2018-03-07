@@ -111,6 +111,9 @@ class IndexPage(IPage):
         )
 
     def content(self):
+        self.items.sort(
+            key=lambda item: item.title
+        )
         return "<ul>{}</ul>".format(
             "".join(
                 """<li><a href="/{path}">{title}</a></li>""".format(
