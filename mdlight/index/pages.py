@@ -31,28 +31,38 @@ class IPage(object):
 
 class MarkdownPage(IPage):
     RE_FIRST_HEADER = re.compile("\s*#([^#].*)")
-    @staticmethod
-    def _extract_title(pathname):
-        title = os.path.basename(pathname)
-        if not os.path.isdir(pathname):
-            with open(pathname) as fin:
-                for (num, line) in enumerate(fin):
-                    if num > 10:
-                        break
-                    m = MarkdownPage.RE_FIRST_HEADER.match(line)
-                    if m:
-                        title += ": " + m.groups()[0].strip()
-                        break
-        return title
-
     ACCEPTED_EXTENSIONS = {".markdown", ".md", ".tex"}
     BINARY_NAME = "pandoc"
 
     def __init__(self, filepath):
         _log.debug("Markdown node %r", filepath)
         self.filepath = filepath
-        self.title_ = self._extract_title(filepath)
         self.encoding_ = "identity"
+
+    def title(self):
+        _log.debug("MarkdownPage.title: %s", self.filepath)
+        proc = subprocess.Popen(
+            [self.BINARY_NAME, self.filepath, "--to", "commonmark"],
+            shell=False,
+            stdout=subprocess.PIPE,
+        )
+        title = None
+        first_line = None
+        for (num, line) in enumerate(proc.stdout):
+            line = line.decode("utf-8")
+            if num == 0:
+                first_line = line
+            elif num > 10:
+                break
+            m = MarkdownPage.RE_FIRST_HEADER.match(line)
+            if m:
+                title = m.groups()[0].strip()
+                break
+        if title is None:
+            if first_line is None:
+                first_line = "..."
+            title = "<i>\"{}\"</i>".format(first_line)
+        return "{}: <b>{}</b>".format(os.path.basename(self.filepath), title)
 
     def content(self):
         proc = subprocess.Popen(
@@ -87,43 +97,6 @@ class GraphvizPage(IPage):
         text = proc.stdout.read()
         proc.wait()
         return text
-
-
-class IndexPage(IPage):
-    class Item(object):
-        def __init__(self, title, path):
-            self.title = title
-            self.path = path
-
-    def __init__(self, path):
-        _log.debug("Index page %r", path)
-        self.path = path
-        self.items = list()
-        self.title_ = os.path.basename(path)
-
-    def add(self, relpath, title):
-        _log.debug("Add %s as %s", relpath, title)
-        self.items.append(
-            self.Item(
-                title=title,
-                path=relpath,
-            )
-        )
-
-    def content(self):
-        self.items.sort(
-            key=lambda item: item.title
-        )
-        return "<h2>{title}</h2> <ul>{ls}</ul>".format(
-            title=self.title(),
-            ls="".join(
-                """<li><a href="/{path}">{title}</a></li>""".format(
-                    path=item.path,
-                    title=item.title,
-                )
-                for item in self.items
-            )
-        ).encode("utf-8")
 
 
 class StaticPage(IPage):
