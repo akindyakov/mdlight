@@ -46,27 +46,58 @@ def _is_hidden_path(path):
 
 def _create_node_rec(abs_path, relative_path):
     if os.path.isdir(abs_path):
-        page = pages.IndexPage(abs_path)
-        for file_base_name in os.listdir(abs_path):
-            abs_file_path = os.path.join(abs_path, file_base_name)
-            relative_file_path = os.path.join(relative_path, file_base_name)
-            if not _is_hidden_path(abs_file_path):
-                page.add(
-                    relative_file_path,
+        return IndexPage(abs_path, relative_path)
+    else:
+        extension = os.path.splitext(abs_path)[1]
+        if extension in pages.MarkdownPage.ACCEPTED_EXTENSIONS:
+            return pages.MarkdownPage(abs_path)
+        elif extension in pages.GraphvizPage.ACCEPTED_EXTENSIONS:
+            return pages.GraphvizPage(abs_path)
+        else:
+            return pages.StaticPage(abs_path)
+
+
+class IndexPage(pages.IPage):
+    class Item(object):
+        def __init__(self, title, path):
+            self.title = title
+            self.path = path
+
+    def __init__(self, abs_path, relative_path):
+        _log.debug("Index page %r", relative_path)
+        self.abs_path = abs_path
+        self.relative_path = relative_path
+        self.title_ = os.path.basename(abs_path)
+
+    def content(self):
+        items = list()
+        for file_base_name in os.listdir(self.abs_path):
+            abs_file_path = os.path.join(self.abs_path, file_base_name)
+            relative_file_path = os.path.join(self.relative_path, file_base_name)
+            if _is_hidden_path(abs_file_path):
+                continue
+            items.append(
+                self.Item(
                     _create_node_rec(
                         abs_file_path,
                         relative_file_path,
                     ).title(),
+                    relative_file_path,
                 )
-    else:
-        extension = os.path.splitext(abs_path)[1]
-        if extension in pages.MarkdownPage.ACCEPTED_EXTENSIONS:
-            page = pages.MarkdownPage(abs_path)
-        elif extension in pages.GraphvizPage.ACCEPTED_EXTENSIONS:
-            page = pages.GraphvizPage(abs_path)
-        else:
-            page = pages.StaticPage(abs_path)
-    return page
+            )
+        items.sort(
+            key=lambda item: item.title
+        )
+        return "<h2>{title}</h2> <ul>{ls}</ul>".format(
+            title=self.title(),
+            ls="".join(
+                """<li><a href="/{path}">{title}</a></li>""".format(
+                    path=item.path,
+                    title=item.title,
+                )
+                for item in items
+            )
+        ).encode("utf-8")
 
 
 def create_node(root_path, relative_path):
